@@ -1,76 +1,92 @@
-import fs from 'fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'url';
+import fs from "fs/promises";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const contactsPath = path.join(__dirname, './contacts.json');
-
-const getParsedContactsList = async () => {
-  let parsedContacts = [];
-  await fs
-    .readFile(contactsPath, 'utf8')
-    .then(contacts => {
-      parsedContacts = JSON.parse(contacts);
-    })
-    .catch(err => console.log(err.message));
-  return parsedContacts;
-};
+const contactsPath = path.resolve("models", "./contacts.json");
 
 const listContacts = async () => {
-  const contacts = await getParsedContactsList();
-  return contacts;
-};
-
-const getContactById = async contactId => {
-  const contacts = await getParsedContactsList();
-  const contact = contacts.find(c => c.id === contactId);
-  return contact;
-};
-
-const addContact = async (id, name, email, phone) => {
-  const contacts = await getParsedContactsList();
-  const newContact = {
-    id,
-    name,
-    email,
-    phone,
-  };
-  const newContactsList = [...contacts, newContact];
-  await fs.writeFile(contactsPath, JSON.stringify(newContactsList));
-  return newContact;
-};
-
-const removeContact = async contactId => {
-  const contacts = await getParsedContactsList();
-  const searchedContact = contacts.find(c => c.id === contactId);
-
-  if (!searchedContact) {
-    return null;
+  try {
+    const contacts = await fs.readFile(contactsPath);
+    return JSON.parse(contacts);
+  } catch (error) {
+    console.error("Error reading file:", error.message);
   }
-
-  const filteredContacts = contacts.filter(c => c.id !== contactId);
-  fs.writeFile(contactsPath, JSON.stringify(filteredContacts));
-  return searchedContact;
 };
 
-const updateContact = async (id, name, email, phone) => {
-  const contacts = await getParsedContactsList();
-  const searchedContact = contacts.find(c => c.id === id);
-
-  if (!searchedContact) {
-    return null;
+const getContactById = async (contactId) => {
+  try {
+    const contacts = await listContacts();
+    const result = contacts.find((contact) => contact.id === contactId);
+    return result || null;
+  } catch (error) {
+    console.error("Error reading file:", error.message);
   }
-  const updatedContact = {
-    id,
-    name,
-    email,
-    phone,
-  };
-  const filteredContactsList = contacts.filter(c => c.id !== id);
-  const updatedContactsList = [...filteredContactsList, updatedContact];
-  await fs.writeFile(contactsPath, JSON.stringify(updatedContactsList));
-  return updatedContact;
 };
 
-export { listContacts, getContactById, addContact, removeContact, updateContact };
+const removeContact = async (contactId) => {
+  try {
+    const contacts = await listContacts();
+    const index = contacts.findIndex((item) => item.id === contactId);
+    if (index === -1) {
+      return null;
+    }
+    const deletedContact = contacts.splice(index, 1);
+    await fs.writeFile(contactsPath, JSON.stringify(contacts, null, 2));
+    return deletedContact;
+  } catch (error) {
+    console.error("Error reading file:", error.message);
+  }
+};
+
+const addContact = async ({ name, email, phone }) => {
+  try {
+    const contacts = await listContacts();
+    const newContact = {
+      id: uuidv4(),
+      name,
+      email,
+      phone,
+    };
+    const allContacts = [...contacts, newContact];
+    await fs.writeFile(contactsPath, JSON.stringify(allContacts, null, 2));
+    return newContact;
+  } catch (error) {
+    console.error("Validation error or error writing file:", error.message);
+  }
+};
+
+const updateContact = async (contactId, body) => {
+  try {
+    const contacts = await listContacts();
+    const findIndex = contacts.findIndex((contact) => contact.id === contactId);
+    const updatedContact = contacts.find((contact) => contact.id === contactId);
+
+    if (!updatedContact) {
+      return null;
+    }
+    Object.entries(body).forEach(([key, value]) => {
+      if (Object.prototype.hasOwnProperty.call(updatedContact, key)) {
+        updatedContact[key] = value;
+      }
+    });
+
+    contacts.splice(findIndex, 1);
+
+    const allContacts = [...contacts, updatedContact];
+    await fs.writeFile(contactsPath, JSON.stringify(allContacts, null, 2));
+    return updatedContact;
+  } catch (error) {
+    console.error(
+      "Validation error or error reading/writing file:",
+      error.message
+    );
+  }
+};
+
+export {
+  listContacts,
+  getContactById,
+  removeContact,
+  addContact,
+  updateContact,
+};
