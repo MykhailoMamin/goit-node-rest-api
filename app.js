@@ -1,8 +1,9 @@
-import express from "express";
-import logger from "morgan";
-import cors from "cors";
-import "dotenv/config";
-import contactsRouter from "./routes/api/contacts.js";
+const express = require("express");
+const logger = require("morgan");
+const cors = require("cors");
+require("dotenv").config();
+
+const contactsRouter = require("./routes/api/contacts");
 
 const app = express();
 
@@ -15,15 +16,11 @@ app.use(express.json());
 app.use("/api/contacts", contactsRouter);
 
 app.use((req, res) => {
-  res.status(404).json({ message: "Page not found" });
+  res.status(404).json({ message: "Not found" });
 });
 
 app.use((err, req, res, next) => {
-  if (err.status) {
-    res.status(err.status).json({ error: err.message });
-  } else {
-    res.status(500).json({ error: "Internal Server Error" });
-  }
+  res.status(500).json({ message: err.message });
 });
 
-export default app;
+module.exports = app;
