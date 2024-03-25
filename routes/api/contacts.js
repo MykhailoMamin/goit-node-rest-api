@@ -1,32 +1,53 @@
-const express = require("express");
-
-const ctrl = require("../../controllers/contacts");
-const { validateBody } = require("../../middlewares");
-const { schemas } = require("../../models");
-const { isValidId } = require("../../middlewares");
+import express from "express";
+import contactsRequests from "../../controllers/contacts-controller.js";
+import { validateBody } from "../../decorators/index.js";
+import {
+  isValidId,
+  isEmptyBody,
+  isEmptyBodyFavorite,
+} from "../../middleware/index.js";
+import {
+  newContactValidation,
+  contactsEditValidation,
+  contactsFavoriteValidation,
+} from "../../schemas/contacts-validation.js";
 
 const router = express.Router();
 
-router.get("/", ctrl.listContacts);
+router.get("/", contactsRequests.getAllContacts);
 
-router.get("/:contactId", isValidId, ctrl.getById);
+router.get("/:contactId", isValidId, contactsRequests.getContactsById);
 
-router.delete("/:contactId", isValidId, ctrl.removeContact);
+router.post(
+  "/",
+  isEmptyBody,
+  validateBody(newContactValidation),
+  contactsRequests.addNewContact
+);
 
-router.post("/", validateBody(schemas.addSchema), ctrl.addContact);
+router.delete("/:contactId", isValidId, (req, res, next) => {
+  contactsRequests.deleteContact(req, res, (error, deletedContact) => {
+    if (error) {
+      return next(error);
+    }
+    res.json(deletedContact);
+  });
+});
 
 router.put(
   "/:contactId",
   isValidId,
-  validateBody(schemas.addSchema),
-  ctrl.updateContact
+  isEmptyBody,
+  validateBody(contactsEditValidation),
+  contactsRequests.editContact
 );
 
 router.patch(
   "/:contactId/favorite",
   isValidId,
-  validateBody(schemas.updFavoriteSchema),
-  ctrl.updateFavorite
+  isEmptyBodyFavorite,
+  validateBody(contactsFavoriteValidation),
+  contactsRequests.updateContact
 );
 
-module.exports = router;
+export default router;
